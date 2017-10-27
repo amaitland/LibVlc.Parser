@@ -1,5 +1,5 @@
 ﻿using System;
-using System.IO;
+using System.Runtime.InteropServices;
 using ClangSharp;
 using LibVlc.Parser.Model;
 
@@ -7,6 +7,20 @@ namespace LibVlc.Parser.Clang
 {
 	public static class Extensions
 	{
+		public static T[] MarshalUnmananagedArray2Struct<T>(IntPtr unmanagedArray, int length)
+		{
+			var size = Marshal.SizeOf(typeof(T));
+			var mangagedArray = new T[length];
+
+			for (int i = 0; i < length; i++)
+			{
+				IntPtr ins = new IntPtr(unmanagedArray.ToInt64() + i * size);
+				mangagedArray[i] = Marshal.PtrToStructure<T>(ins);
+			}
+
+			return mangagedArray;
+		}
+
 		public static string ReturnTypeHelper(this CXType resultType)
 		{
 			switch (resultType.kind)

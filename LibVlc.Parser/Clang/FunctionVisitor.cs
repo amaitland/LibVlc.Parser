@@ -59,6 +59,7 @@ namespace LibVlc.Parser.Clang
 			f.UnmanagedFunction = f.Name;
 			f.CallingConvention = functionType.CallingConventionSpelling();
 			f.ReturnType = resultType.ReturnTypeHelper();
+			f.Comment = ""; //When clang is updated to 6.0.0 there's a clang_Cursor_getParsedComment() https://clang.llvm.org/doxygen/group__CINDEX__COMMENT.html#gab4f95ae3b2e0bd63b10cecc3727a391e
 
 			int numArgTypes = clang.getNumArgTypes(functionType);
 
