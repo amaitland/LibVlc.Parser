@@ -191,7 +191,7 @@
     <Compile Include="Model\Struct.cs" />
     <Compile Include="Model\Enum.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="Model\Method.cs" />
+    <Compile Include="Model\Function.cs" />
     <Compile Include="Model\Parameter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

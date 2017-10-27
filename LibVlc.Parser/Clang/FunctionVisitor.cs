@@ -8,9 +8,9 @@ namespace LibVlc.Parser.Clang
 {
 	internal sealed class FunctionVisitor : ICXCursorVisitor
 	{
-		private readonly Dictionary<string, Method> functions = new Dictionary<string, Method>();
+		private readonly Dictionary<string, Function> functions = new Dictionary<string, Function>();
 
-		public IList<Method> Functions => functions.Select(x => x.Value).ToList();
+		public IList<Function> Functions => functions.Select(x => x.Value).ToList();
 
 		public CXChildVisitResult Visit(CXCursor cursor, CXCursor parent, IntPtr data)
 		{
@@ -49,12 +49,12 @@ namespace LibVlc.Parser.Clang
 			return CXChildVisitResult.CXChildVisit_Recurse;
 		}
 
-		private static Method WriteFunctionInfoHelper(CXCursor cursor)
+		private static Function WriteFunctionInfoHelper(CXCursor cursor)
 		{
 			var functionType = clang.getCursorType(cursor);
 			var resultType = clang.getCursorResultType(cursor);
 
-			var f = new Method();
+			var f = new Function();
 			f.Name = clang.getCursorSpelling(cursor).ToString();
 			f.UnmanagedFunction = f.Name;
 			f.CallingConvention = functionType.CallingConventionSpelling();

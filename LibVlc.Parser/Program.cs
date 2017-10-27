@@ -47,7 +47,7 @@ namespace LibVlc.Parser
 			}
 
 			var @namespace = "LibVlc";
-			string methodClassName = "Methods";
+			string methodClassName = "Functions";
 			var libraryPath = "libvlc";
 
 			using (var sw = new StreamWriter("temp.cs"))

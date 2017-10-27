@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace LibVlc.Parser.Model
 {
-	public class Method
+	public class Function
 	{
 		public string FileName { get; set; }
 		public string Name { get; set; }
@@ -13,7 +13,7 @@ namespace LibVlc.Parser.Model
 		public string Comment { get; set; }
 		public string CallingConvention { get; set; }
 
-		public Method()
+		public Function()
 		{
 			Parameters = new List<Parameter>();
 		}
@@ -29,14 +29,14 @@ namespace LibVlc.Parser.Model
 			if (obj == null || GetType() != obj.GetType())
 				return false;
 
-			var p = (Method)obj;
+			var p = (Function)obj;
 			return Name == p.Name && ReturnType == p.ReturnType && Parameters.SequenceEqual(p.Parameters);
 		}
 
 		public override string ToString()
 		{
 			var paramsString = Parameters.Count > 0 ? Parameters.Select(i => i.ToString()).Aggregate((i, j) => i + j) : "";
-			return string.Format("\r\nMethod(Name:'{0}',ReturnType:'{1}', Parameters:'{2}');", Name, ReturnType, paramsString);
+			return string.Format("\r\nFunction(Name:'{0}',ReturnType:'{1}', Parameters:'{2}');", Name, ReturnType, paramsString);
 		}
 	}
 }

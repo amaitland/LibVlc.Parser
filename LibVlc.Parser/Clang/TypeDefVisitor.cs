@@ -10,7 +10,7 @@ namespace LibVlc.Parser.Clang
     {
         private readonly IndentedTextWriter tw;
         public readonly IList<Struct> Pointers = new List<Struct>();
-        public readonly IList<Method> Delegates = new List<Method>();
+        public readonly IList<Function> Delegates = new List<Function>();
         public readonly IList<Struct> DataPointers = new List<Struct>();
 
         private readonly HashSet<string> visitedTypeDefs = new HashSet<string>();
@@ -78,7 +78,7 @@ namespace LibVlc.Parser.Clang
 
                         var fileName = clang.getFileName(file).ToString();
 
-                        var d = new Method
+                        var d = new Function
                         {
                             Name = spelling,
                             ReturnType = Extensions.ReturnTypeHelper(clang.getResultType(pointee)),
