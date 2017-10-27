@@ -1,19 +1,14 @@
-﻿namespace LibVlc.Parser.Clang
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using ClangSharp;
+using Enum = LibVlc.Parser.Model.Enum;
+
+namespace LibVlc.Parser.Clang
 {
-	using System;
-	using System.Collections.Generic;
-	using ClangSharp;
-
-	internal sealed class EnumVisitor : ICXCursorVisitor
+    internal sealed class EnumVisitor : ICXCursorVisitor
     {
-        private readonly ISet<string> printedEnums = new HashSet<string>();
-
-        private readonly ICodeGenerator codeGenerator;
-
-        public EnumVisitor(ICodeGenerator codeGenerator)
-        {
-            this.codeGenerator = codeGenerator;
-        }
+        private readonly IDictionary<string, Enum> enums = new Dictionary<string, Enum>();
 
         public CXChildVisitResult Visit(CXCursor cursor, CXCursor parent, IntPtr data)
         {
@@ -70,30 +65,31 @@
                     }
                 }
 
-                // if we've printed these previously, skip them
-                if (this.printedEnums.Contains(enumName))
+                // if we've already parsed this enum previously, skip them
+                if (enums.ContainsKey(enumName))
                 {
                     return CXChildVisitResult.CXChildVisit_Continue;
                 }
 
-                this.printedEnums.Add(enumName);
-
-				var enumValues = new List<Tuple<string, string>>();
+                var e = new Enum { Name = enumName, Type = inheritedEnumType };
 
                 // visit all the enum values
                 clang.visitChildren(cursor, (cxCursor, _, __) =>
                 {
-					enumValues.Add(Tuple.Create(clang.getCursorSpelling(cxCursor).ToString(), clang.getEnumConstantDeclValue(cxCursor).ToString()));
+                    var key = clang.getCursorSpelling(cxCursor).ToString();
+                    var val = clang.getEnumConstantDeclValue(cxCursor);
+                    e.Values.Add(new KeyValuePair<string, long>(key, val));
 
-					return CXChildVisitResult.CXChildVisit_Continue;
+                    return CXChildVisitResult.CXChildVisit_Continue;
                 },
-				new CXClientData(IntPtr.Zero));
+                new CXClientData(IntPtr.Zero));
 
-				codeGenerator.EnumDeclaration(enumName, inheritedEnumType, enumValues.ToArray());
-
-			}
+                enums.Add(enumName, e);
+            }
 
             return CXChildVisitResult.CXChildVisit_Recurse;
         }
+
+        public IList<Enum> Enums => enums.Select(x => x.Value).ToList(); 
     }
 }

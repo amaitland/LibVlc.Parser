@@ -3,22 +3,19 @@ using System.Linq;
 
 namespace LibVlc.Parser.Model
 {
-	public class Function
+	public class Method
 	{
 		public string FileName { get; set; }
 		public string Name { get; set; }
-		public string ManagedName { get; set;  }
+		public string UnmanagedFunction { get; set; }
 		public string ReturnType { get; set; }
 		public List<Parameter> Parameters { get; set; }
-		public bool IsDeprecated { get; set; }
+		public string Comment { get; set; }
+		public string CallingConvention { get; set; }
 
-		public Function(string fileName, string name, string returnType, bool isDeprecated)
+		public Method()
 		{
-			FileName = fileName;
-			Name = name;
-			ReturnType = returnType;
 			Parameters = new List<Parameter>();
-			IsDeprecated = isDeprecated;
 		}
 
 		public override int GetHashCode()
@@ -32,7 +29,7 @@ namespace LibVlc.Parser.Model
 			if (obj == null || GetType() != obj.GetType())
 				return false;
 
-			var p = (Function)obj;
+			var p = (Method)obj;
 			return Name == p.Name && ReturnType == p.ReturnType && Parameters.SequenceEqual(p.Parameters);
 		}
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace LibVlc.Parser
 {
@@ -7,7 +8,7 @@ namespace LibVlc.Parser
 		void BeginGeneration();
 		void EndGeneration();
 
-		void EnumDeclaration(string name, string inheritedType, Tuple<string, string>[] values);
+		void EnumDeclaration(string name, string inheritedType, KeyValuePair<string, long>[] values);
 		void StructDecleration(string name, Tuple<string, string>[] fields);
 	}
 }

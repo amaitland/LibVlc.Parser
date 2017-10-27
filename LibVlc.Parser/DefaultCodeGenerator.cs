@@ -1,5 +1,6 @@
 ﻿using System;
 using System.CodeDom.Compiler;
+using System.Collections.Generic;
 
 namespace LibVlc.Parser
 {
@@ -37,7 +38,7 @@ namespace LibVlc.Parser
 
 		}
 
-		void ICodeGenerator.EnumDeclaration(string name, string inheritedType, Tuple<string, string>[] values)
+		void ICodeGenerator.EnumDeclaration(string name, string inheritedType, KeyValuePair<string, long>[] values)
 		{
 			
 			textWriter.WriteLine("public enum " + name + " : " + inheritedType);
@@ -47,7 +48,7 @@ namespace LibVlc.Parser
 
 			foreach (var val in values)
 			{
-				textWriter.WriteLine(val.Item1.Replace("libvlc_", "") + " = " + val.Item2 + ",");
+				textWriter.WriteLine(val.Key.Replace("libvlc_", "") + " = " + val.Value + ",");
 			}
 
 			textWriter.Indent--;

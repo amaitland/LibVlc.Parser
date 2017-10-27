@@ -1,19 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ClangSharp;
+using LibVlc.Parser.Model;
 
 namespace LibVlc.Parser.Clang
 {
 	internal sealed class StructVisitor : ICXCursorVisitor
 	{
-		private readonly ISet<string> visitedStructs = new HashSet<string>();
-
-		private readonly ICodeGenerator codeGenerator;
-
-		public StructVisitor(ICodeGenerator codeGenerator)
-		{
-			this.codeGenerator = codeGenerator;
-		}
+		private readonly IDictionary<string, Struct> structs = new Dictionary<string, Struct>();
 
 		public CXChildVisitResult Visit(CXCursor cursor, CXCursor parent, IntPtr data)
 		{
@@ -40,9 +35,9 @@ namespace LibVlc.Parser.Clang
 					}
 				}
 
-				if (!this.visitedStructs.Contains(structName))
+				if (!structs.ContainsKey(structName))
 				{
-					var values = new List<Tuple<string, string>>();
+					var s = new Struct { Name = structName } ;
 
 					var fieldPosition = 0;
 
@@ -52,20 +47,17 @@ namespace LibVlc.Parser.Clang
 						var fieldName = clang.getCursorSpelling(cxCursor).ToString();
 						if (string.IsNullOrEmpty(fieldName))
 						{
-							fieldName = "field" + fieldPosition; // what if they have fields called field*? :)
+							fieldName = "field" + fieldPosition;
 						}
 
 						fieldPosition++;
-						values.Add(cxCursor.ToMarshalString(fieldName));
+						s.Fields.Add(cxCursor.ToMarshalString(fieldName));
 
 						return CXChildVisitResult.CXChildVisit_Continue;
 					},
 					new CXClientData(IntPtr.Zero));
 
-					this.visitedStructs.Add(structName);
-
-					codeGenerator.StructDecleration(structName, values.ToArray());
-
+					structs.Add(structName, s);
 				}
 
 				return CXChildVisitResult.CXChildVisit_Continue;
@@ -74,6 +66,6 @@ namespace LibVlc.Parser.Clang
 			return CXChildVisitResult.CXChildVisit_Recurse;
 		}
 
-		
+		public IList<Struct> Structs => structs.Select(x => x.Value).ToList();
 	}
 }

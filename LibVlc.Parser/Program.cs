@@ -49,18 +49,22 @@ namespace LibVlc.Parser
 			var @namespace = "LibVlc";
 			string methodClassName = "Methods";
 			var libraryPath = "libvlc";
-			var prefixStrip = "libvlc_";
-
 
 			using (var sw = new StreamWriter("temp.cs"))
 			using (var indentedWriter = new IndentedTextWriter(sw))
 			using (ICodeGenerator codeGenerator = new DefaultCodeGenerator(indentedWriter, @namespace))
 			{
 				codeGenerator.BeginGeneration();
-				var structVisitor = new StructVisitor(codeGenerator);
+				
+				var structVisitor = new StructVisitor();
 				foreach (var tu in translationUnits)
 				{
 					clang.visitChildren(clang.getTranslationUnitCursor(tu), structVisitor.Visit, new CXClientData(IntPtr.Zero));
+				}
+
+				foreach(var s in structVisitor.Structs)
+				{
+					codeGenerator.StructDecleration(s.Name, s.Fields.ToArray());
 				}
 
 				var typeDefVisitor = new TypeDefVisitor(indentedWriter);
@@ -69,10 +73,75 @@ namespace LibVlc.Parser
 					clang.visitChildren(clang.getTranslationUnitCursor(tu), typeDefVisitor.Visit, new CXClientData(IntPtr.Zero));
 				}
 
-				var enumVisitor = new EnumVisitor(codeGenerator);
+				foreach(var p in typeDefVisitor.Pointers)
+				{
+					indentedWriter.WriteLine("public partial struct " + p.Name);
+					indentedWriter.WriteLine("{");
+					indentedWriter.Indent++;
+					indentedWriter.WriteLine("public " + p.Name + "(IntPtr pointer)");
+					indentedWriter.WriteLine("{");
+					indentedWriter.Indent++;
+					indentedWriter.WriteLine("Pointer = pointer;");
+					indentedWriter.Indent--;
+					indentedWriter.WriteLine("}");
+					indentedWriter.WriteLine();
+					indentedWriter.Indent--;
+					indentedWriter.WriteLine("public IntPtr Pointer;");
+					indentedWriter.WriteLine("}");
+					indentedWriter.WriteLine();
+				}
+
+				foreach (var d in typeDefVisitor.Delegates)
+				{
+					indentedWriter.WriteLine("[UnmanagedFunctionPointer(" + d.UnmanagedFunction + ")]");
+					indentedWriter.Write("public delegate ");
+					indentedWriter.Write(d.Name);
+					indentedWriter.Write("(");
+
+					var count = 1;
+					foreach(var p in d.Parameters)
+					{
+						indentedWriter.Write(p.Type + " " + p.Name);
+
+						if (count < d.Parameters.Count)
+						{
+							indentedWriter.Write(", ");
+						}
+
+						count++;
+					}
+
+					indentedWriter.WriteLine(");");
+					indentedWriter.WriteLine();
+				}
+
+				foreach (var p in typeDefVisitor.DataPointers)
+				{
+					indentedWriter.WriteLine("public partial struct " + p.Name);
+					indentedWriter.WriteLine("{");
+					indentedWriter.Indent++;
+					indentedWriter.WriteLine("public " + p.Name + "(" + p.Fields[0].Item1 + " value)");
+					indentedWriter.WriteLine("{");
+					indentedWriter.Indent++;
+					indentedWriter.WriteLine("Value = value;");
+					indentedWriter.Indent--;
+					indentedWriter.WriteLine("}");
+					indentedWriter.WriteLine();
+					indentedWriter.WriteLine("public " + p.Fields[0].Item1 + " Value;");
+					indentedWriter.Indent--;
+					indentedWriter.WriteLine("}");
+					indentedWriter.WriteLine();
+				}
+
+				var enumVisitor = new EnumVisitor();
 				foreach (var tu in translationUnits)
 				{
 					clang.visitChildren(clang.getTranslationUnitCursor(tu), enumVisitor.Visit, new CXClientData(IntPtr.Zero));
+				}
+
+				foreach(var e in enumVisitor.Enums)
+				{
+					codeGenerator.EnumDeclaration(e.Name, e.Type, e.Values.ToArray());
 				}
 
 				indentedWriter.WriteLine("public static partial class " + methodClassName);
@@ -80,10 +149,34 @@ namespace LibVlc.Parser
 
 				indentedWriter.Indent++;
 
-				var functionVisitor = new FunctionVisitor(indentedWriter, libraryPath, prefixStrip);
+				var functionVisitor = new FunctionVisitor();
 				foreach (var tu in translationUnits)
 				{
 					clang.visitChildren(clang.getTranslationUnitCursor(tu), functionVisitor.Visit, new CXClientData(IntPtr.Zero));
+				}
+
+				indentedWriter.WriteLine("private const string libraryPath = \"" + libraryPath + "\";");
+				indentedWriter.WriteLine();
+
+				foreach(var f in functionVisitor.Functions)
+				{
+					indentedWriter.WriteLine("[DllImport(libraryPath, EntryPoint = \"" + f.UnmanagedFunction + "\", CallingConvention = " + f.CallingConvention + ")]");
+					indentedWriter.Write("public static extern ");
+					indentedWriter.Write(f.ReturnType);
+					indentedWriter.Write(" " + f.Name + "(");
+
+					for (int i = 0; i < f.Parameters.Count; ++i)
+					{
+						indentedWriter.Write(f.Parameters[i].Type + " " + f.Parameters[i].Name);
+
+						if (i != (f.Parameters.Count - 1))
+						{
+							indentedWriter.Write(", ");
+						}
+					}
+
+					indentedWriter.WriteLine(");");
+					indentedWriter.WriteLine();
 				}
 
 				indentedWriter.Indent--;

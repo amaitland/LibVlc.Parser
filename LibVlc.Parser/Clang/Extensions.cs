@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using ClangSharp;
+using LibVlc.Parser.Model;
 
 namespace LibVlc.Parser.Clang
 {
@@ -21,7 +22,7 @@ namespace LibVlc.Parser.Clang
 			}
 		}
 
-		public static string ArgumentHelper(CXType functionType, CXCursor paramCursor, uint index)
+		public static Parameter ArgumentHelper(CXType functionType, CXCursor paramCursor, uint index)
 		{
 			var type = clang.getArgType(functionType, index);
 			var cursorType = clang.getCursorType(paramCursor);
@@ -79,9 +80,7 @@ namespace LibVlc.Parser.Clang
 				}
 			}
 
-			arg += " " + spelling;
-
-			return arg;
+			return new Parameter { Name = spelling, Type = arg };
 		}
 
 		private static string CommonTypeHandling(CXType type, string outParam = "")

@@ -1,26 +1,16 @@
 ﻿using System;
-using System.CodeDom.Compiler;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 using ClangSharp;
+using LibVlc.Parser.Model;
 
 namespace LibVlc.Parser.Clang
 {
 	internal sealed class FunctionVisitor : ICXCursorVisitor
 	{
-		private readonly IndentedTextWriter tw;
+		private readonly Dictionary<string, Method> functions = new Dictionary<string, Method>();
 
-		private readonly HashSet<string> visitedFunctions = new HashSet<string>();
-
-		private readonly string prefixStrip;
-
-		public FunctionVisitor(IndentedTextWriter tw, string libraryPath, string prefixStrip)
-		{
-			this.prefixStrip = prefixStrip;
-			this.tw = tw;
-			this.tw.WriteLine("private const string libraryPath = \"" + libraryPath + "\";");
-			this.tw.WriteLine();
-		}
+		public IList<Method> Functions => functions.Select(x => x.Value).ToList();
 
 		public CXChildVisitResult Visit(CXCursor cursor, CXCursor parent, IntPtr data)
 		{
@@ -38,7 +28,7 @@ namespace LibVlc.Parser.Clang
 				//var isDeprecated = clang.getCursorAvailability(cursor) == CXAvailabilityKind.CXAvailability_Deprecated;
 				var isDeprecated = false; //TODO; 
 
-				if (this.visitedFunctions.Contains(functionName) || isDeprecated)
+				if (functions.ContainsKey(functionName) || isDeprecated)
 				{
 					return CXChildVisitResult.CXChildVisit_Continue;
 				}
@@ -49,9 +39,9 @@ namespace LibVlc.Parser.Clang
 
 				var fileName = clang.getFileName(file).ToString();
 
-				visitedFunctions.Add(functionName);
+				var f = WriteFunctionInfoHelper(cursor);
 
-				WriteFunctionInfoHelper(cursor, tw, prefixStrip);
+				functions.Add(functionName, f);
 
 				return CXChildVisitResult.CXChildVisit_Continue;
 			}
@@ -59,38 +49,25 @@ namespace LibVlc.Parser.Clang
 			return CXChildVisitResult.CXChildVisit_Recurse;
 		}
 
-		private static void WriteFunctionInfoHelper(CXCursor cursor, TextWriter tw, string prefixStrip)
+		private static Method WriteFunctionInfoHelper(CXCursor cursor)
 		{
 			var functionType = clang.getCursorType(cursor);
-			var functionName = clang.getCursorSpelling(cursor).ToString();
 			var resultType = clang.getCursorResultType(cursor);
 
-			tw.WriteLine("[DllImport(libraryPath, EntryPoint = \"" + functionName + "\", CallingConvention = " + functionType.CallingConventionSpelling() + ")]");
-			tw.Write("public static extern ");
-
-			tw.Write(resultType.ReturnTypeHelper());
-
-			if (functionName.StartsWith(prefixStrip))
-			{
-				functionName = functionName.Substring(prefixStrip.Length);
-			}
-
-			tw.Write(" " + functionName + "(");
+			var f = new Method();
+			f.Name = clang.getCursorSpelling(cursor).ToString();
+			f.UnmanagedFunction = f.Name;
+			f.CallingConvention = functionType.CallingConventionSpelling();
+			f.ReturnType = resultType.ReturnTypeHelper();
 
 			int numArgTypes = clang.getNumArgTypes(functionType);
 
 			for (uint i = 0; i < numArgTypes; ++i)
 			{
-				tw.Write(Extensions.ArgumentHelper(functionType, clang.Cursor_getArgument(cursor, i), i));
-
-				if (i != (numArgTypes - 1))
-				{
-					tw.Write(", ");
-				}
+				f.Parameters.Add(Extensions.ArgumentHelper(functionType, clang.Cursor_getArgument(cursor, i), i));
 			}
 
-			tw.WriteLine(");");
-			tw.WriteLine();
+			return f;
 		}
 	}
 }

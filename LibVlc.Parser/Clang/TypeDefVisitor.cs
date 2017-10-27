@@ -2,12 +2,16 @@
 using System.Collections.Generic;
 using ClangSharp;
 using System.CodeDom.Compiler;
+using LibVlc.Parser.Model;
 
 namespace LibVlc.Parser.Clang
 {
     internal sealed class TypeDefVisitor : ICXCursorVisitor
     {
         private readonly IndentedTextWriter tw;
+        public readonly IList<Struct> Pointers = new List<Struct>();
+        public readonly IList<Method> Delegates = new List<Method>();
+        public readonly IList<Struct> DataPointers = new List<Struct>();
 
         private readonly HashSet<string> visitedTypeDefs = new HashSet<string>();
 
@@ -28,12 +32,12 @@ namespace LibVlc.Parser.Clang
             {
                 var spelling = clang.getCursorSpelling(cursor).ToString();
 
-                if (this.visitedTypeDefs.Contains(spelling))
+                if (visitedTypeDefs.Contains(spelling))
                 {
                     return CXChildVisitResult.CXChildVisit_Continue;
                 }
 
-                this.visitedTypeDefs.Add(spelling);
+                visitedTypeDefs.Add(spelling);
 
                 CXType type = clang.getCanonicalType(clang.getTypedefDeclUnderlyingType(cursor));
 
@@ -58,53 +62,46 @@ namespace LibVlc.Parser.Clang
                     var pointee = clang.getPointeeType(type);
                     if (pointee.kind == CXTypeKind.CXType_Record || pointee.kind == CXTypeKind.CXType_Void)
                     {
-                        this.tw.WriteLine("public partial struct " + spelling);
-                        this.tw.WriteLine("{");
-                        tw.Indent++;
-                        this.tw.WriteLine("public " + spelling + "(IntPtr pointer)");
-                        this.tw.WriteLine("{");
-                        tw.Indent++;
-                        this.tw.WriteLine("this.Pointer = pointer;");
-                        tw.Indent--;
-                        this.tw.WriteLine("}");
-                        this.tw.WriteLine();
-                        tw.Indent--;
-                        this.tw.WriteLine("public IntPtr Pointer;");
-                        this.tw.WriteLine("}");
-                        this.tw.WriteLine();
+                        var s = new Struct { Name = spelling };
+                        s.Fields.Add(Tuple.Create("Pointer", "IntPtr"));
+
+                        Pointers.Add(s);
 
                         return CXChildVisitResult.CXChildVisit_Continue;
                     }
 
                     if (pointee.kind == CXTypeKind.CXType_FunctionProto)
                     {
-                        this.tw.WriteLine("[UnmanagedFunctionPointer(" + pointee.CallingConventionSpelling() + ")]");
-                        this.tw.Write("public delegate ");
-                        tw.Write(Extensions.ReturnTypeHelper(clang.getResultType(pointee)));
-                        this.tw.Write(" ");
-                        this.tw.Write(spelling);
-                        this.tw.Write("(");
+                        var location = clang.getCursorLocation(cursor);
+
+                        clang.getFileLocation(location, out CXFile file, out uint line, out uint column, out uint offset);
+
+                        var fileName = clang.getFileName(file).ToString();
+
+                        var d = new Method
+                        {
+                            Name = spelling,
+                            ReturnType = Extensions.ReturnTypeHelper(clang.getResultType(pointee)),
+                            FileName = fileName,
+                            UnmanagedFunction = pointee.CallingConventionSpelling(),
+                            Comment = "" //TODO: Get comment
+                        };
 
                         uint argumentCounter = 0;
+                        int numArgTypes = clang.getNumArgTypes(pointee);
 
                         clang.visitChildren(cursor, delegate(CXCursor cxCursor, CXCursor parent1, IntPtr ptr)
                         {
                             if (cxCursor.kind == CXCursorKind.CXCursor_ParmDecl)
                             {
-                                int numArgTypes = clang.getNumArgTypes(pointee);
-                                tw.Write(Extensions.ArgumentHelper(pointee, cxCursor, argumentCounter++));
-
-                                if (argumentCounter < numArgTypes)
-                                {
-                                    tw.Write(", ");
-                                }
+                                var p = Extensions.ArgumentHelper(pointee, cxCursor, argumentCounter++);
+                                d.Parameters.Add(p);
                             }
 
                             return CXChildVisitResult.CXChildVisit_Continue;
                         }, new CXClientData(IntPtr.Zero));
 
-                        this.tw.WriteLine(");");
-                        this.tw.WriteLine();
+                        Delegates.Add(d);
 
                         return CXChildVisitResult.CXChildVisit_Continue;
                     }
@@ -113,20 +110,10 @@ namespace LibVlc.Parser.Clang
                 if (clang.isPODType(type) != 0)
                 {
                     var podType = type.ToPlainTypeString();
-                    this.tw.WriteLine("public partial struct " + spelling);
-                    this.tw.WriteLine("{");
-                    tw.Indent++;
-                    this.tw.WriteLine("public " + spelling + "(" + podType + " value)");
-                    this.tw.WriteLine("{");
-                    tw.Indent++;
-                    this.tw.WriteLine("this.Value = value;");
-                    tw.Indent--;
-                    this.tw.WriteLine("}");
-                    this.tw.WriteLine();
-                    this.tw.WriteLine("public " + type.ToPlainTypeString() + " Value;");
-                    tw.Indent--;
-                    this.tw.WriteLine("}");
-                    this.tw.WriteLine();
+
+                    var s = new Struct { Name = spelling };
+                    s.Fields.Add(Tuple.Create(podType, podType));
+                    DataPointers.Add(s);
                 }
 
                 return CXChildVisitResult.CXChildVisit_Continue;
