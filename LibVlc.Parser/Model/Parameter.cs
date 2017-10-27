@@ -1,4 +1,4 @@
-﻿namespace LibVlc.Parser
+﻿namespace LibVlc.Parser.Model
 {
 	public struct Parameter
 	{

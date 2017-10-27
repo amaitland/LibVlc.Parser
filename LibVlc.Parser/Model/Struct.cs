@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace LibVlc.Parser
+namespace LibVlc.Parser.Model
 {
 	public class Struct
 	{

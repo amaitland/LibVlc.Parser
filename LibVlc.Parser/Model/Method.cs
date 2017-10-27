@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace LibVlc.Parser
+namespace LibVlc.Parser.Model
 {
 	public class Function
 	{

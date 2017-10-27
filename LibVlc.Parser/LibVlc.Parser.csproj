@@ -190,12 +190,12 @@
     <Compile Include="DefaultVlcParser.cs" />
     <Compile Include="ICodeGenerator.cs" />
     <Compile Include="IVlcParser.cs" />
-    <Compile Include="Struct.cs" />
-    <Compile Include="Enum.cs" />
+    <Compile Include="Model\Struct.cs" />
+    <Compile Include="Model\Enum.cs" />
     <Compile Include="HeaderFileVisitor.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="Method.cs" />
-    <Compile Include="Parameter.cs" />
+    <Compile Include="Model\Method.cs" />
+    <Compile Include="Model\Parameter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
