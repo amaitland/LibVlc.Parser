@@ -1,36 +1,63 @@
 ﻿using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.IO;
+using LibVlc.Parser.Model;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.Text;
 
 namespace LibVlc.Parser
 {
 	public class DefaultCodeGenerator : ICodeGenerator
 	{
-		private IndentedTextWriter textWriter;
-		private string @namespace;
+		private AdhocWorkspace _workspace;
+		private Project _project;
+		private IndentedTextWriter _textWriter;
+		private string _namespace;
+		private string _outputFolder;
+		private string _enumNamespace;
+		private string _structNamespace;
 
-		public DefaultCodeGenerator(IndentedTextWriter textWriter, string @namespace)
+		public DefaultCodeGenerator(string outputFolder, IndentedTextWriter textWriter, string ns)
 		{
-			this.textWriter = textWriter;
-			this.@namespace = @namespace;
+			_textWriter = textWriter;
+			_namespace = ns;
+			_outputFolder = outputFolder;
+
+			_enumNamespace = _namespace + ".Enums";
+			_structNamespace = _namespace + ".Structs"; //TODO: Maybe a different name
+
+			_workspace = new AdhocWorkspace();
+
+			string projName = "LibVlc.Interop";
+			var projectId = ProjectId.CreateNewId();
+			var versionStamp = VersionStamp.Create();
+			var projectInfo = ProjectInfo.Create(projectId, versionStamp, projName, projName, LanguageNames.CSharp);
+			_project = _workspace.AddProject(projectInfo);
+			//https://joshvarty.wordpress.com/2014/09/12/learn-roslyn-now-part-6-working-with-workspaces/
+			//var sourceText = SourceText.From("class A {}");
+
+			//// Create using/Imports directives
+			//var usingDirectives = _syntaxGenerator.NamespaceImportDeclaration("System");
 		}
 
 		void ICodeGenerator.BeginGeneration()
 		{
-			textWriter.WriteLine("namespace " + @namespace);
-			textWriter.WriteLine("{");
+			_textWriter.WriteLine("namespace " + _namespace);
+			_textWriter.WriteLine("{");
 
-			textWriter.Indent++;
+			_textWriter.Indent++;
 
-			textWriter.WriteLine("using System;");
-			textWriter.WriteLine("using System.Runtime.InteropServices;");
-			textWriter.WriteLine();
+			_textWriter.WriteLine("using System;");
+			_textWriter.WriteLine("using System.Runtime.InteropServices;");
+			_textWriter.WriteLine();
 		}
 
 		void ICodeGenerator.EndGeneration()
 		{
-			textWriter.Indent--;
-			textWriter.WriteLine("}");
+			_textWriter.Indent--;
+			_textWriter.WriteLine("}");
 		}
 
 		void IDisposable.Dispose()
@@ -40,43 +67,96 @@ namespace LibVlc.Parser
 
 		void ICodeGenerator.EnumDeclaration(string name, string inheritedType, KeyValuePair<string, long>[] values)
 		{
-			
-			textWriter.WriteLine("public enum " + name + " : " + inheritedType);
-			textWriter.WriteLine("{");
+			// Get the SyntaxGenerator for the specified language
+			var syntaxGenerator = SyntaxGenerator.GetGenerator(_workspace, LanguageNames.CSharp);
 
-			textWriter.Indent++;
-
+			var enumValues = new List<SyntaxNode>();
 			foreach (var val in values)
 			{
-				textWriter.WriteLine(val.Key.Replace("libvlc_", "") + " = " + val.Value + ",");
+				var member = syntaxGenerator.EnumMember(val.Key, syntaxGenerator.LiteralExpression(Convert.ToInt32(val.Value)));
+				enumValues.Add(member);
 			}
 
-			textWriter.Indent--;
+			var declaration = syntaxGenerator.EnumDeclaration(name,
+				accessibility: Accessibility.Public,
+				members: enumValues);
 
-			textWriter.WriteLine("}");
-			textWriter.WriteLine();			
+			var enumNamespaceDeclaration = syntaxGenerator.NamespaceDeclaration(_enumNamespace, declaration);
+
+			//// Get a CompilationUnit (code file) for the generated code
+			var enumNode = syntaxGenerator.CompilationUnit(enumNamespaceDeclaration).NormalizeWhitespace();
+
+			var outputFile = Path.Combine(_outputFolder, @"Enums\" + name + ".cs");
+
+			enumNode.WriteToFilePath(outputFile);
 		}
 
-		void ICodeGenerator.StructDecleration(string name, Tuple<string, string>[] fields)
+		void ICodeGenerator.StructDecleration(string name, Field[] fields)
 		{
-			textWriter.WriteLine("public partial struct " + name);
-			textWriter.WriteLine("{");
+			var outputFile = Path.Combine(_outputFolder, @"Structs\" + name + ".cs");
 
-			textWriter.Indent++;
+			var file = new FileInfo(outputFile);
+			file.Directory.Create(); // Create folder if doesn't exist
 
-			foreach (var field in fields)
+			//var docInfo = DocumentInfo.Create(DocumentId.CreateNewId(_project.Id), file.Name, isGenerated: true);
+
+			//var newDocument = _workspace.AddDocument(docInfo);
+
+			// Get the SyntaxGenerator for the specified language
+			var syntaxGenerator = SyntaxGenerator.GetGenerator(_workspace, LanguageNames.CSharp);
+
+			var usingDirectives = syntaxGenerator.NamespaceImportDeclaration("System");
+
+			//[StructLayout(LayoutKind.Sequential)]
+
+			int i = 0;
+
+			var structFields = new List<SyntaxNode>();
+			foreach (var val in fields)
 			{
-				if(field.Item2 != "")
-				{
-					textWriter.WriteLine(field.Item2);
-				}
-				textWriter.WriteLine(field.Item1);
+				//TODO: map val.Item2 to a TypeExpression
+				var type = UnmanagedTypeToSpecialType(val.Type);
+				var member = syntaxGenerator.FieldDeclaration(val.Name, syntaxGenerator.TypeExpression(type), Accessibility.Public);
+				structFields.Add(syntaxGenerator.AddAttributes(member, syntaxGenerator.Attribute("[FieldOffset(" + i++ +")]")));
 			}
 
-			textWriter.Indent--;
+			var declaration = syntaxGenerator.StructDeclaration(name,
+				accessibility: Accessibility.Public,
+				modifiers: DeclarationModifiers.Partial,
+				
+				members: structFields);
 
-			textWriter.WriteLine("}");
-			textWriter.WriteLine();
+			//var s = syntaxGenerator.AddAttributes(declaration, syntaxGenerator.Attribute("[StructLayout(LayoutKind.Sequential, Pack=1, CharSet=CharSet.Unicode)]"));
+
+			var namespaceDeclaration = syntaxGenerator.NamespaceDeclaration(_structNamespace, declaration);
+
+			// Get a CompilationUnit (code file) for the generated code
+			var structNode = syntaxGenerator.CompilationUnit(usingDirectives, namespaceDeclaration).NormalizeWhitespace();
+
+			structNode.WriteToFilePath(outputFile);
 		}
+
+		private SpecialType UnmanagedTypeToSpecialType(string type)
+		{
+			switch(type)
+			{
+				case "string":
+				{
+					return SpecialType.System_String;
+				}
+				case "int":
+				{
+					return SpecialType.System_Int32;
+				}
+				//case "IntPtr":
+				//{
+				//	return SpecialType.System_IntPtr;
+				//}
+			}
+
+			return SpecialType.System_String;
+		}
+
+		
 	}
 }

@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace LibVlc.Parser.Model
 {
+	[DebuggerDisplay("Function(Name:{Name});")]
 	public class Function
 	{
 		public string FileName { get; set; }

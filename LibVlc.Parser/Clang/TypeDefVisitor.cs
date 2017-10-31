@@ -63,7 +63,7 @@ namespace LibVlc.Parser.Clang
                     if (pointee.kind == CXTypeKind.CXType_Record || pointee.kind == CXTypeKind.CXType_Void)
                     {
                         var s = new Struct { Name = spelling };
-                        s.Fields.Add(Tuple.Create("Pointer", "IntPtr"));
+                        s.Fields.Add(new Field { Name = "Pointer", Type = "IntPtr" });
 
                         Pointers.Add(s);
 
@@ -112,7 +112,8 @@ namespace LibVlc.Parser.Clang
                     var podType = type.ToPlainTypeString();
 
                     var s = new Struct { Name = spelling };
-                    s.Fields.Add(Tuple.Create(podType, podType));
+                    s.Fields.Add(new Field { Type = podType, Name = "Pointer" });
+
                     DataPointers.Add(s);
                 }
 

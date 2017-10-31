@@ -1,15 +1,21 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 using ClangSharp;
-using Newtonsoft.Json;
+using LibVlc.Parser.Model;
+using Microsoft.CodeAnalysis;
 
 namespace LibVlc.Parser
 {
 	public static class Extensions
 	{
-		public static string ToJson(this object obj)
+		public static void WriteToFilePath(this SyntaxNode node, string filePath)
 		{
-			return JsonConvert.SerializeObject(obj, Formatting.Indented);
+			using (var stream = File.OpenWrite(filePath))
+			using (var textWriter = new StreamWriter(stream))
+			{
+				node.WriteTo(textWriter);
+			}
 		}
 
 		public static string CallingConventionSpelling(this CXType type)
@@ -95,40 +101,71 @@ namespace LibVlc.Parser
 			}
 		}
 
-		public static Tuple<string, string> ToMarshalString(this CXCursor cursor, string cursorSpelling)
+		public static Field ToField(this CXCursor cursor, string cursorSpelling)
 		{
+			var field = new Field
+			{
+				AccessModifier = "public",
+				Name = cursorSpelling
+			};
+
 			var canonical = clang.getCanonicalType(clang.getCursorType(cursor));
 			
 			switch (canonical.kind)
 			{
 				case CXTypeKind.CXType_ConstantArray:
-					long arraySize = clang.getArraySize(canonical);
-					var elementType = clang.getCanonicalType(clang.getArrayElementType(canonical));
+				{
+					//long arraySize = clang.getArraySize(canonical);
+					//var elementType = clang.getCanonicalType(clang.getArrayElementType(canonical));
 
-					var sb = new StringBuilder();
-					for (int i = 0; i < arraySize; ++i)
-					{
-						sb.Append("public " + elementType.ToPlainTypeString() + " " + cursorSpelling + i + "; ");
-					}
+					//var sb = new StringBuilder();
+					//for (int i = 0; i < arraySize; ++i)
+					//{
+					//	sb.Append("public " + elementType.ToPlainTypeString() + " " + cursorSpelling + i + "; ");
+					//}
 
-					return Tuple.Create(sb.ToString(), "");
+					//return Tuple.Create(sb.ToString(), "");
+					throw new NotImplementedException();
+				}
 				case CXTypeKind.CXType_Pointer:
+				{
 					var pointeeType = clang.getCanonicalType(clang.getPointeeType(canonical));
 					switch (pointeeType.kind)
 					{
 						case CXTypeKind.CXType_Char_S:
-							return Tuple.Create("public string " + cursorSpelling + ";", "[MarshalAs(UnmanagedType.LPStr)]");
+						{
+							field.Type = "string";
+							field.Attribute = "[MarshalAs(UnmanagedType.LPStr)]";
+							break;
+						}
 						case CXTypeKind.CXType_WChar:
-							return Tuple.Create("public string " + cursorSpelling + ";", "[MarshalAs(UnmanagedType.LPWStr)]");
+						{
+							field.Type = "string";
+							field.Attribute = "[MarshalAs(UnmanagedType.LPWStr)]";
+							break;
+						}
 						default:
-							return Tuple.Create("public IntPtr " + cursorSpelling + ";", "");
+						{
+							field.Type = "IntPtr";
+							break;
+						}
 					}
+					break;
+				}
 				case CXTypeKind.CXType_Record:
 				case CXTypeKind.CXType_Enum:
-					return Tuple.Create("public " + clang.getTypeSpelling(canonical).ToString() + " " + cursorSpelling + ";", "");
+				{
+					field.Type = clang.getTypeSpelling(canonical).ToString();
+					break;
+				}
 				default:
-					return Tuple.Create("public " + canonical.ToPlainTypeString() + " " + cursorSpelling + ";", "");
+				{
+					field.Type = canonical.ToPlainTypeString();
+					break;
+				}
 			}
+
+			return field;
 		}
 	}
 }

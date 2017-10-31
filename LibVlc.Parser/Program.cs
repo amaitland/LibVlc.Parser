@@ -52,7 +52,7 @@ namespace LibVlc.Parser
 
 			using (var sw = new StreamWriter("temp.cs"))
 			using (var indentedWriter = new IndentedTextWriter(sw))
-			using (ICodeGenerator codeGenerator = new DefaultCodeGenerator(indentedWriter, @namespace))
+			using (ICodeGenerator codeGenerator = new DefaultCodeGenerator("output", indentedWriter, @namespace))
 			{
 				codeGenerator.BeginGeneration();
 				
@@ -75,20 +75,22 @@ namespace LibVlc.Parser
 
 				foreach(var p in typeDefVisitor.Pointers)
 				{
-					indentedWriter.WriteLine("public partial struct " + p.Name);
-					indentedWriter.WriteLine("{");
-					indentedWriter.Indent++;
-					indentedWriter.WriteLine("public " + p.Name + "(IntPtr pointer)");
-					indentedWriter.WriteLine("{");
-					indentedWriter.Indent++;
-					indentedWriter.WriteLine("Pointer = pointer;");
-					indentedWriter.Indent--;
-					indentedWriter.WriteLine("}");
-					indentedWriter.WriteLine();
-					indentedWriter.Indent--;
-					indentedWriter.WriteLine("public IntPtr Pointer;");
-					indentedWriter.WriteLine("}");
-					indentedWriter.WriteLine();
+					codeGenerator.StructDecleration(p.Name, p.Fields.ToArray());
+
+					//indentedWriter.WriteLine("public partial struct " + p.Name);
+					//indentedWriter.WriteLine("{");
+					//indentedWriter.Indent++;
+					//indentedWriter.WriteLine("public " + p.Name + "(IntPtr pointer)");
+					//indentedWriter.WriteLine("{");
+					//indentedWriter.Indent++;
+					//indentedWriter.WriteLine("Pointer = pointer;");
+					//indentedWriter.Indent--;
+					//indentedWriter.WriteLine("}");
+					//indentedWriter.WriteLine();
+					//indentedWriter.Indent--;
+					//indentedWriter.WriteLine("public IntPtr Pointer;");
+					//indentedWriter.WriteLine("}");
+					//indentedWriter.WriteLine();
 				}
 
 				foreach (var d in typeDefVisitor.Delegates)
@@ -120,14 +122,14 @@ namespace LibVlc.Parser
 					indentedWriter.WriteLine("public partial struct " + p.Name);
 					indentedWriter.WriteLine("{");
 					indentedWriter.Indent++;
-					indentedWriter.WriteLine("public " + p.Name + "(" + p.Fields[0].Item1 + " value)");
+					indentedWriter.WriteLine("public " + p.Name + "(" + p.Fields[0].Name + " value)");
 					indentedWriter.WriteLine("{");
 					indentedWriter.Indent++;
 					indentedWriter.WriteLine("Value = value;");
 					indentedWriter.Indent--;
 					indentedWriter.WriteLine("}");
 					indentedWriter.WriteLine();
-					indentedWriter.WriteLine("public " + p.Fields[0].Item1 + " Value;");
+					indentedWriter.WriteLine("public " + p.Fields[0].Name + " Value;");
 					indentedWriter.Indent--;
 					indentedWriter.WriteLine("}");
 					indentedWriter.WriteLine();
@@ -193,29 +195,6 @@ namespace LibVlc.Parser
 
 			clang.disposeIndex(createIndex);
 
-			//var visitor = RunVisitor(compilerArgs, headers);
-
-			////Take all the functions and filter them by path, we only need the ones contained in the libvlc functions
-			//// Exclude deprecated functions
-
-			////var deprecated = visitor.Functions.Where(x => x.Value.IsDeprecated && x.Key.StartsWith("vlc")).ToList();
-			//var functions = visitor.Functions.Select(x => x.Value).ToList();
-			//var enums = visitor.Enums.Select(x => x.Value).ToList();
-			//var structs = visitor.Structs.Select(x => x.Value).ToList();
-
-			////Console.WriteLine(functions.ToJson());
-			////Console.WriteLine(visitor.Enums.ToJson());
-
-			////UpdateFunctionParamsAndReturnType(functions);
-
-			////var enums = GenerateManagedEnumModel(visitor.Enums);
-
-			////Console.WriteLine(functions.ToJson());
-			////Console.WriteLine(visitor.Structs.ToJson());
-			////Console.WriteLine(visitor.Enums.ToJson());
-			//Console.WriteLine("Finished parsing");
-
-			////Console.ReadLine();
 
 			//// Get a workspace
 			//var workspace = new AdhocWorkspace();
@@ -280,19 +259,12 @@ namespace LibVlc.Parser
 			//  members: members);
 
 			//var signatureNameSpaceDeclaration = generator.NamespaceDeclaration("Vlc.DotNet.Core.Interop.Signatures", classDefinition);
-			//var enumNamespaceDeclaration = generator.NamespaceDeclaration("Vlc.DotNet.Core.Interop.Enums", enumMembers);
 
 			//// Get a CompilationUnit (code file) for the generated code
 			//var functionNode = generator.CompilationUnit(usingDirectives, signatureNameSpaceDeclaration).
 			//  NormalizeWhitespace();
 
 			//var str = functionNode.ToFullString();
-
-			//// Get a CompilationUnit (code file) for the generated code
-			//var enumNode = generator.CompilationUnit(enumNamespaceDeclaration).
-			//  NormalizeWhitespace();
-
-			//str = enumNode.ToFullString();
 
 			Console.ReadLine();
 		}

@@ -51,7 +51,7 @@ namespace LibVlc.Parser.Clang
 						}
 
 						fieldPosition++;
-						s.Fields.Add(cxCursor.ToMarshalString(fieldName));
+						s.Fields.Add(cxCursor.ToField(fieldName));
 
 						return CXChildVisitResult.CXChildVisit_Continue;
 					},

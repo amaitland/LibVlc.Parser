@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace LibVlc.Parser.Model
 {
+	[DebuggerDisplay("Enum(Name:{Name}, Type:{Type});")]
 	public class Enum
 	{
 		public string Name { get; set; }
