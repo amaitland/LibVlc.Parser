@@ -5,6 +5,7 @@ using System.IO;
 using LibVlc.Parser.Model;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 
 namespace LibVlc.Parser
@@ -34,7 +35,12 @@ namespace LibVlc.Parser
 			var projectId = ProjectId.CreateNewId();
 			var versionStamp = VersionStamp.Create();
 			var projectInfo = ProjectInfo.Create(projectId, versionStamp, projName, projName, LanguageNames.CSharp);
-			_project = _workspace.AddProject(projectInfo);
+			//_project = _workspace.AddProject(projectInfo);
+
+			var s = SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Create(), "LibVlc.Interop", new[] { projectInfo });
+			var solution = _workspace.AddSolution(s);
+
+			var success = _workspace.TryApplyChanges(solution);
 			//https://joshvarty.wordpress.com/2014/09/12/learn-roslyn-now-part-6-working-with-workspaces/
 			//var sourceText = SourceText.From("class A {}");
 
@@ -98,42 +104,40 @@ namespace LibVlc.Parser
 			var file = new FileInfo(outputFile);
 			file.Directory.Create(); // Create folder if doesn't exist
 
-			//var docInfo = DocumentInfo.Create(DocumentId.CreateNewId(_project.Id), file.Name, isGenerated: true);
+			var docInfo = DocumentInfo.Create(DocumentId.CreateNewId(_project.Id), file.Name);
 
-			//var newDocument = _workspace.AddDocument(docInfo);
+			var doc = _workspace.AddDocument(docInfo);
 
 			// Get the SyntaxGenerator for the specified language
-			var syntaxGenerator = SyntaxGenerator.GetGenerator(_workspace, LanguageNames.CSharp);
+			var syntaxGenerator = SyntaxGenerator.GetGenerator(doc);
 
 			var usingDirectives = syntaxGenerator.NamespaceImportDeclaration("System");
-
-			//[StructLayout(LayoutKind.Sequential)]
 
 			int i = 0;
 
 			var structFields = new List<SyntaxNode>();
 			foreach (var val in fields)
 			{
-				//TODO: map val.Item2 to a TypeExpression
 				var type = UnmanagedTypeToSpecialType(val.Type);
 				var member = syntaxGenerator.FieldDeclaration(val.Name, syntaxGenerator.TypeExpression(type), Accessibility.Public);
-				structFields.Add(syntaxGenerator.AddAttributes(member, syntaxGenerator.Attribute("[FieldOffset(" + i++ +")]")));
+				structFields.Add(syntaxGenerator.AddAttributes(member, syntaxGenerator.Attribute("FieldOffset(" + i++ +")")));
 			}
 
 			var declaration = syntaxGenerator.StructDeclaration(name,
 				accessibility: Accessibility.Public,
-				modifiers: DeclarationModifiers.Partial,
-				
+				modifiers: DeclarationModifiers.Partial,				
 				members: structFields);
 
-			//var s = syntaxGenerator.AddAttributes(declaration, syntaxGenerator.Attribute("[StructLayout(LayoutKind.Sequential, Pack=1, CharSet=CharSet.Unicode)]"));
+			var s = syntaxGenerator.AddAttributes(declaration, syntaxGenerator.Attribute("StructLayout(LayoutKind.Sequential, Pack=1, CharSet=CharSet.Unicode)"));
 
-			var namespaceDeclaration = syntaxGenerator.NamespaceDeclaration(_structNamespace, declaration);
+			var namespaceDeclaration = syntaxGenerator.NamespaceDeclaration(_structNamespace, s);
 
 			// Get a CompilationUnit (code file) for the generated code
 			var structNode = syntaxGenerator.CompilationUnit(usingDirectives, namespaceDeclaration).NormalizeWhitespace();
 
 			structNode.WriteToFilePath(outputFile);
+
+			//doc.
 		}
 
 		private SpecialType UnmanagedTypeToSpecialType(string type)
