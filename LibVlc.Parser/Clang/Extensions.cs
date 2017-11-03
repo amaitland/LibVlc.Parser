@@ -28,7 +28,24 @@ namespace LibVlc.Parser.Clang
 			{
 				case CXTypeKind.CXType_Pointer:
 				{
-					return resultType.IsPtrToConstChar() ? "string" : "IntPtr"; // const char* gets special treatment
+					// const char* gets special treatment	
+					if (resultType.IsPtrToConstChar())
+					{
+						return "string";
+					}
+					var pointee = clang.getPointeeType(resultType);
+
+					switch (pointee.kind)
+					{
+						case CXTypeKind.CXType_Typedef:
+						{
+							return clang.getTypeSpelling(pointee).ToString();
+						}
+						default:
+						{
+							return "IntPtr"; 
+						}
+					}
 				}
 				default:
 				{
