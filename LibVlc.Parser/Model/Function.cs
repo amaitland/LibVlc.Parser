@@ -14,6 +14,7 @@ namespace LibVlc.Parser.Model
 		public List<Parameter> Parameters { get; set; }
 		public string Comment { get; set; }
 		public string CallingConvention { get; set; }
+		public bool IsDelegate { get; set; }
 
 		public Function()
 		{

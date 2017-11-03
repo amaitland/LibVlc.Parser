@@ -11,7 +11,16 @@ namespace LibVlc.Parser
 	{
 		public static void WriteToFilePath(this SyntaxNode node, string filePath)
 		{
-			using (var stream = File.OpenWrite(filePath))
+			var file = new FileInfo(filePath);
+			file.Directory.Create(); // Create folder if doesn't exist
+
+			//Delete old file as was having problems with the output being appended
+			if (file.Exists)
+			{
+				file.Delete();
+			}
+
+			using (var stream = File.OpenWrite(file.FullName))
 			using (var textWriter = new StreamWriter(stream))
 			{
 				node.WriteTo(textWriter);

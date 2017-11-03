@@ -10,7 +10,7 @@ namespace LibVlc.Parser.Clang
 	{
 		private readonly Dictionary<string, Function> functions = new Dictionary<string, Function>();
 
-		public IList<Function> Functions => functions.Select(x => x.Value).ToList();
+		public List<Function> Functions => functions.Select(x => x.Value).ToList();
 
 		public CXChildVisitResult Visit(CXCursor cursor, CXCursor parent, IntPtr data)
 		{
@@ -37,9 +37,8 @@ namespace LibVlc.Parser.Clang
 
 				clang.getFileLocation(location, out CXFile file, out uint line, out uint column, out uint offset);
 
-				var fileName = clang.getFileName(file).ToString();
-
 				var f = WriteFunctionInfoHelper(cursor);
+				f.FileName = clang.getFileName(file).ToString();
 
 				functions.Add(functionName, f);
 

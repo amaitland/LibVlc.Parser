@@ -8,17 +8,11 @@ namespace LibVlc.Parser.Clang
 {
     internal sealed class TypeDefVisitor : ICXCursorVisitor
     {
-        private readonly IndentedTextWriter tw;
         public readonly IList<Struct> Pointers = new List<Struct>();
         public readonly IList<Function> Delegates = new List<Function>();
         public readonly IList<Struct> DataPointers = new List<Struct>();
 
         private readonly HashSet<string> visitedTypeDefs = new HashSet<string>();
-
-        public TypeDefVisitor(IndentedTextWriter tw)
-        {
-            this.tw = tw;
-        }
 
         public CXChildVisitResult Visit(CXCursor cursor, CXCursor parent, IntPtr data)
         {
@@ -100,6 +94,8 @@ namespace LibVlc.Parser.Clang
 
                             return CXChildVisitResult.CXChildVisit_Continue;
                         }, new CXClientData(IntPtr.Zero));
+
+                        d.IsDelegate = true;
 
                         Delegates.Add(d);
 
