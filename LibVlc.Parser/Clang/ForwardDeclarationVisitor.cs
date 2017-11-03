@@ -23,15 +23,15 @@ namespace LibVlc.Parser.Clang
                 return CXChildVisitResult.CXChildVisit_Continue;
             }
 
-            if (clang.equalCursors(cursor, this.beginningCursor) != 0)
+            if (clang.equalCursors(cursor, beginningCursor) != 0)
             {
-                this.beginningCursorReached = true;
+                beginningCursorReached = true;
                 return CXChildVisitResult.CXChildVisit_Continue;
             }
 
-            if (this.beginningCursorReached)
+            if (beginningCursorReached)
             {
-                this.ForwardDeclarationCursor = cursor;
+                ForwardDeclarationCursor = cursor;
                 return CXChildVisitResult.CXChildVisit_Break;
             }
 

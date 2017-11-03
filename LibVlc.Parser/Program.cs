@@ -42,7 +42,7 @@ namespace LibVlc.Parser
 				translationUnits.Add(translationUnit);
 			}
 
-			using (ICodeGenerator codeGenerator = new DefaultCodeGenerator("output"))
+			using (ICodeGenerator codeGenerator = new DefaultCodeGenerator(Path.GetFullPath(@"..\..\..\..\LibVlc.Interop\Generated")))
 			{
 				var structVisitor = new StructVisitor();
 				foreach (var tu in translationUnits)

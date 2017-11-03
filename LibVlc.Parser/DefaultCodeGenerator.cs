@@ -22,6 +22,7 @@ namespace LibVlc.Parser
 		private string _outputFolder;
 		private readonly AdhocWorkspace _workspace;
 		private readonly SyntaxGenerator _generator;
+		private readonly Project _project;
 
 		public DefaultCodeGenerator(string outputFolder)
 		{
@@ -33,16 +34,20 @@ namespace LibVlc.Parser
 				ProjectName,
 				ProjectName,
 				LanguageNames.CSharp,
-				Path.Combine(outputFolder, ProjectName, ".csproj"),
+				Path.Combine(outputFolder, ProjectName + ".csproj"),
 				Path.Combine(outputFolder, ProjectName));
 
-			var solutionInfo = SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default, Path.Combine(outputFolder, SolutionName), new[] { projectInfo });
+			var solutionInfo = SolutionInfo.Create(SolutionId.CreateNewId(),
+				VersionStamp.Default,
+				Path.Combine(outputFolder,
+				SolutionName),
+				new[] { projectInfo });
 
 			var solution = _workspace.AddSolution(solutionInfo);
 
-			var project = solution.Projects.First();
+			_project = solution.Projects.First();
 
-			_generator = SyntaxGenerator.GetGenerator(_workspace, LanguageNames.CSharp);
+			_generator = SyntaxGenerator.GetGenerator(_project);
 		}
 
 		void IDisposable.Dispose()
@@ -52,12 +57,7 @@ namespace LibVlc.Parser
 
 		void ICodeGenerator.EnumDeclaration(string name, string inheritedType, KeyValuePair<string, long>[] values)
 		{
-			var enumValues = new List<SyntaxNode>();
-			foreach (var val in values)
-			{
-				var member = _generator.EnumMember(val.Key, _generator.LiteralExpression(Convert.ToInt32(val.Value)));
-				enumValues.Add(member);
-			}
+			var enumValues = values.Select(x => _generator.EnumMember(x.Key, _generator.LiteralExpression(Convert.ToInt32(x.Value))));
 
 			var declaration = _generator.EnumDeclaration(name,
 				accessibility: Accessibility.Public,
@@ -68,17 +68,15 @@ namespace LibVlc.Parser
 			//// Get a CompilationUnit (code file) for the generated code
 			var enumNode = _generator.CompilationUnit(enumNamespaceDeclaration).NormalizeWhitespace();
 
-			var outputFile = Path.Combine(_outputFolder, @"Enums\" + name + ".cs");
+			var outputFile = Path.Combine(_outputFolder, $"Enums\\{name}.cs");
 
 			enumNode.WriteToFilePath(outputFile);
 		}
 
 		void ICodeGenerator.StructDecleration(string name, Field[] fields)
 		{
-			var outputFile = Path.Combine(_outputFolder, @"Structs\" + name + ".cs");
+			var outputFile = Path.Combine(_outputFolder, $"Structs\\{name}.cs");
 
-			// Get the SyntaxGenerator for the specified language
-			var usingDirectives = _generator.NamespaceImportDeclaration("System");
 
 			int i = 0;
 
@@ -87,7 +85,9 @@ namespace LibVlc.Parser
 			{
 				var type = UnmanagedTypeToSpecialType(_generator, val.Type);
 				var member = _generator.FieldDeclaration(val.Name, type, Accessibility.Public);
-				structFields.Add(_generator.AddAttributes(member, _generator.Attribute("FieldOffset(" + i++ +")")));
+
+				//structFields.Add(_generator.AddAttributes(member, _generator.Attribute($"{typeof(FieldOffsetAttribute).Name}({i++})")));
+				structFields.Add(member);
 			}
 
 			var declaration = _generator.StructDeclaration(name,
@@ -100,48 +100,13 @@ namespace LibVlc.Parser
 			var namespaceDeclaration = _generator.NamespaceDeclaration(StructNamespace, s);
 
 			// Get a CompilationUnit (code file) for the generated code
-			var structNode = _generator.CompilationUnit(usingDirectives, namespaceDeclaration).NormalizeWhitespace();
+			var structNode = _generator.CompilationUnit(_generator.NamespaceImportDeclaration("System"),
+														_generator.NamespaceImportDeclaration("System.Runtime.InteropServices"),
+														_generator.NamespaceImportDeclaration(EnumNamespace),
+														namespaceDeclaration);
 
-			structNode.WriteToFilePath(outputFile);
+			structNode.NormalizeWhitespace().WriteToFilePath(outputFile);
 		}
-
-		//void ICodeGenerator.GenerateDelegates(IList<Function> functions)
-		//{
-		//	var outputFile = Path.Combine(_outputFolder, @"Delegates.cs");
-
-		//	var usingDirectives = _syntaxGenerator.NamespaceImportDeclaration("System");
-
-		//	var delegates = new List<SyntaxNode>();
-
-		//	foreach (var func in functions)
-		//	{
-		//		int i = 0;
-
-		//		var paramaters = new List<SyntaxNode>();
-		//		foreach (var val in func.Parameters)
-		//		{
-		//			var paramType = GetRefKind(val.Type, out RefKind refKind);
-		//			var type = UnmanagedTypeToSpecialType(_syntaxGenerator, paramType);
-		//			var paramDec = _syntaxGenerator.ParameterDeclaration(val.Name, type, refKind: refKind);
-		//			paramaters.Add(paramDec);
-		//		}
-
-		//		var declaration = _syntaxGenerator.DelegateDeclaration(func.Name,
-		//			accessibility: Accessibility.Public,
-		//			parameters: paramaters);
-
-		//		var d = _syntaxGenerator.AddAttributes(declaration, _syntaxGenerator.Attribute("UnmanagedFunctionPointer(CallingConvention.Cdecl)"));
-
-		//		delegates.Add(d);
-		//	}
-
-		//	var namespaceDeclaration = _syntaxGenerator.NamespaceDeclaration(NameSpace, delegates);
-
-		//	// Get a CompilationUnit (code file) for the generated code
-		//	var structNode = _syntaxGenerator.CompilationUnit(usingDirectives, namespaceDeclaration).NormalizeWhitespace();
-
-		//	structNode.WriteToFilePath(outputFile);
-		//}
 
 		void ICodeGenerator.GenerateFunctions(IList<Function> functions)
 		{
@@ -156,8 +121,6 @@ namespace LibVlc.Parser
 
 				foreach (var func in group)
 				{
-					int i = 0;
-
 					var paramaters = new List<SyntaxNode>();
 					foreach (var val in func.Parameters)
 					{
@@ -194,9 +157,10 @@ namespace LibVlc.Parser
 
 				// Get a CompilationUnit (code file) for the generated code
 				var structNode = _generator.CompilationUnit(_generator.NamespaceImportDeclaration("System"),
-																  _generator.NamespaceImportDeclaration(EnumNamespace),
-																  _generator.NamespaceImportDeclaration(StructNamespace),
-																  namespaceDeclaration).NormalizeWhitespace();
+					_generator.NamespaceImportDeclaration("System.Runtime.InteropServices"),
+					_generator.NamespaceImportDeclaration(EnumNamespace),
+					_generator.NamespaceImportDeclaration(StructNamespace),
+					namespaceDeclaration).NormalizeWhitespace();
 
 				structNode.WriteToFilePath(outputFile);
 			}
@@ -206,12 +170,9 @@ namespace LibVlc.Parser
 		{
 			foreach (var p in structs)
 			{
-				var outputFile = Path.Combine(_outputFolder, @"Structs\" + p.Name + ".cs");
+				var outputFile = Path.Combine(_outputFolder, $"Structs\\{p.Name}.cs");
 
-				// Get the SyntaxGenerator for the specified language
 				var usingDirectives = _generator.NamespaceImportDeclaration("System");
-
-				int i = 0;
 
 				var members = new List<SyntaxNode>();
 
@@ -252,8 +213,7 @@ namespace LibVlc.Parser
 				refKind = RefKind.Out;
 				return type.Substring(4);
 			}
-
-
+			
 			refKind = RefKind.None;
 			return type;
 		}
@@ -266,25 +226,9 @@ namespace LibVlc.Parser
 				{
 					return null;
 				}
-				case "int":
-				{
-					return generator.TypeExpression(SpecialType.System_Int32);
-				}
 				case "IntPtr":
 				{
 					return generator.IdentifierName(typeof(IntPtr).Name);
-				}
-				case "float":
-				{
-					return generator.TypeExpression(SpecialType.System_Single);
-				}
-				case "uint":
-				{
-					return generator.TypeExpression(SpecialType.System_UInt32);
-				}
-				case "long":
-				{
-					return generator.TypeExpression(SpecialType.System_Int64);
 				}
 				default:
 				{

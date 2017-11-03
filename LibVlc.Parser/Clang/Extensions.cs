@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ClangSharp;
 using LibVlc.Parser.Model;
@@ -48,6 +49,7 @@ namespace LibVlc.Parser.Clang
 			}
 
 			string arg;
+			bool isUnicodeString = false;
 
 			switch (type.kind)
 			{
@@ -72,12 +74,14 @@ namespace LibVlc.Parser.Clang
 					}
 					case CXTypeKind.CXType_Char_S:
 					{
-						arg = type.IsPtrToConstChar() ? "[MarshalAs(UnmanagedType.LPStr)] string" : "IntPtr"; // if it's not a const, it's best to go with IntPtr
+						arg = type.IsPtrToConstChar() ? "string" : "IntPtr"; // if it's not a const, it's best to go with IntPtr
+						isUnicodeString = false;
 						break;
 					}
 					case CXTypeKind.CXType_WChar:
 					{
-						arg = type.IsPtrToConstChar() ? "[MarshalAs(UnmanagedType.LPWStr)] string" : "IntPtr";
+						arg = type.IsPtrToConstChar() ? "string" : "IntPtr";
+						isUnicodeString = true;
 						break;
 					}
 					default:
@@ -94,7 +98,7 @@ namespace LibVlc.Parser.Clang
 				}
 			}
 
-			return new Parameter { Name = spelling, Type = arg };
+			return new Parameter { Name = spelling, Type = arg, IsUnicodeString = isUnicodeString };
 		}
 
 		private static string CommonTypeHandling(CXType type, string outParam = "")

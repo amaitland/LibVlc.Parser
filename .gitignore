@@ -27,3 +27,4 @@ Debug/
 Release/
 .vs/
 
+/LibVlc.Interop/Generated

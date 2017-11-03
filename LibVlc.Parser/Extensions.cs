@@ -61,42 +61,42 @@ namespace LibVlc.Parser
 			return false;
 		}
 
-		public static string ToPlainTypeString(this CXType type, string unknownType = "UnknownType")
+		public static string ToPlainTypeString(this CXType type)
 		{
 			var canonical = clang.getCanonicalType(type);
 			switch (type.kind)
 			{
 				case CXTypeKind.CXType_Bool:
-					return "bool";
+					return "Boolean";
 				case CXTypeKind.CXType_UChar:
 				case CXTypeKind.CXType_Char_U:
-					return "char";
+					return "Char";
 				case CXTypeKind.CXType_SChar:
 				case CXTypeKind.CXType_Char_S:
-					return "sbyte";
+					return "SByte";
 				case CXTypeKind.CXType_UShort:
-					return "ushort";
+					return "UInt16";
 				case CXTypeKind.CXType_Short:
-					return "short";
+					return "Int16";
 				case CXTypeKind.CXType_Float:
-					return "float";
+					return "Single";
 				case CXTypeKind.CXType_Double:
-					return "double";
+					return "Double";
 				case CXTypeKind.CXType_Int:
-					return "int";
+					return "Int32";
 				case CXTypeKind.CXType_UInt:
-					return "uint";
+					return "UInt32";
 				case CXTypeKind.CXType_Pointer:
 				case CXTypeKind.CXType_NullPtr: // ugh, what else can I do?
 					return "IntPtr";
 				case CXTypeKind.CXType_Long:
-					return "int";
+					return "Int32";
 				case CXTypeKind.CXType_ULong:
-					return "int";
+					return "Int32";
 				case CXTypeKind.CXType_LongLong:
-					return "long";
+					return "Int64";
 				case CXTypeKind.CXType_ULongLong:
-					return "ulong";
+					return "UInt64";
 				case CXTypeKind.CXType_Void:
 					return "void";
 				case CXTypeKind.CXType_Unexposed:
@@ -106,7 +106,7 @@ namespace LibVlc.Parser
 					}
 					return canonical.ToPlainTypeString();
 				default:
-					return unknownType;
+					return "IntPtr";
 			}
 		}
 

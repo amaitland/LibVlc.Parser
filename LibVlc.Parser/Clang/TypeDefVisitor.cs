@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using ClangSharp;
-using System.CodeDom.Compiler;
 using LibVlc.Parser.Model;
 
 namespace LibVlc.Parser.Clang
